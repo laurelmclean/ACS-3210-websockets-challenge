@@ -9,16 +9,37 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-io.on('connection', (socket) => {
-    io.emit('chat message', 'a user connected');
-    socket.on('disconnect', () => {
-        io.emit('chat message', 'user disconnected');
-    });
-});
+const users = {};
 
 io.on('connection', (socket) => {
-    socket.on('chat message', (msg) => {
-        io.emit('chat message', msg);
+    socket.on('set nickname', (nickname) => {
+        users[socket.id] = nickname;
+
+        socket.broadcast.emit('chat message', {
+            nickname: 'Make Chat',
+            message: `${nickname} has connected`
+        });
+    });
+
+    socket.on('chat message', (data) => {
+        const { nickname, message } = data;
+        io.emit('chat message', { nickname, message });
+    });
+
+    socket.on('typing', () => {
+        const nickname = users[socket.id];
+        socket.broadcast.emit('typing', nickname);
+    });
+
+    socket.on('disconnect', () => {
+        const nickname = users[socket.id];
+        delete users[socket.id];
+
+
+        socket.broadcast.emit('chat message', {
+            nickname: 'Make Chat',
+            message: `${nickname} has disconnected`
+        });
     });
 });
 
